@@ -1,0 +1,17 @@
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+    client_header_buffer_size 128k;
+    large_client_header_buffers 4 128k;
+    location / {
+        include proxy_params;
+        client_max_body_size 400m;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 75s;
+        proxy_max_temp_file_size 4096m;
+        proxy_redirect off;
+        proxy_pass http://unix:/home/ubuntu/conversor_app/Proyecto-Grupo7-202120/flaskr/conversion_app.sock;
+    }
+}
+
