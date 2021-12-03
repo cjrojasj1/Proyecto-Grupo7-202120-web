@@ -10,6 +10,8 @@ import io
 import datetime
 import pytz
 import flask
+import boto3
+import botocore
 
 usuario_schema = UsuarioSchema()
 tarea_conversion_schema = TareaConversionSchema()
@@ -21,6 +23,11 @@ allowed_exts = environment_vars['CONV_ALLOWED_EXTENSIONS'].split(',')
 
 ## Broker de mensajeria y worker
 celery = Celery(__name__, broker=environment_vars['CONV_BROKER'])
+
+boto3_session = boto3.Session(aws_access_key_id=environment_vars['AWS_ACCESS_KEY_ID'],
+aws_secret_access_key=environment_vars['AWS_SECRET_ACCESS_KEY'])
+
+s3 = boto3_session.resource('s3')
 
 @celery.task(name='registrar_tarea')
 def registrar_tarea(*args):
@@ -79,14 +86,8 @@ class VistaTareasConversion(Resource):
             return resp
         
         try:
-            with open(os.path.join(environment_vars['CONV_UPLOAD_FOLDER'], filename),'rb') as ifile:
-                with open(os.path.join(environment_vars['CONV_PROCESSED_FOLDER'], filename), 'wb') as ofile:
-                    data = ifile.read(1024*1024)
-                    while data:
-                        ofile.write(data)
-                        data = ifile.read(1024*1024)
-
-        except OSError as e:
+            s3.Object(environment_vars['S3_BUCKET_NAME'], environment_vars['S3_UPLOAD_PREFIX'] + filename ).load()
+        except botocore.exceptions.ClientError as e:
             resp = jsonify({'mensaje' : 'El archivo no existe'})
             resp.status_code = 400
             return resp
